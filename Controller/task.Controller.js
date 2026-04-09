@@ -20,13 +20,13 @@ export const addTask = async (req, res) => {
         const newTaskId = lastTask ? lastTask.taskId + 1 : 1;
 
         const currentUser = await userModel.findOne({ userId: req.user.userId });
-        let assignedUserRef = currentUser ? currentUser._id : null;
+        let assignedUserRef = currentUser ? currentUser.userId : null;
 
         if (assignTo) {
             const assignedUser = await userModel.findOne({ userId: assignTo });
 
             if (assignedUser) {
-                assignedUserRef = assignedUser._id;
+                assignedUserRef = assignedUser.userId;
             }
         }
 
@@ -67,7 +67,7 @@ export const getTask = async (req, res) => {
                 .populate('assignTo', 'userId name -_id');
         } else {
             const currentUser = await userModel.findOne({ userId: req.user.userId });
-            const assignedRef = currentUser ? currentUser._id : null;
+            const assignedRef = currentUser ? currentUser.userId : null;
 
             tasks = await taskModel
                 .find(assignedRef ? { assignTo: assignedRef } : {})
@@ -195,6 +195,26 @@ export const getUser = async (req, res) => {
         })
     } catch (error) {
         console.log("Error in getting user", error);
+        res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+export const getTasksTitle = async (req, res) => {
+    try {
+        const tasks = await taskModel.find({}, { taskId: 1, title: 1, _id: 0 });
+        if (!tasks) {
+            return res.status(404).json({
+                message: "No tasks found"
+            });
+        }
+        res.status(200).json({
+            message: "Task titles retrieved successfully",
+            data: tasks
+        })
+    } catch (error) {
+        console.log("Error in getting task titles", error);
         res.status(500).json({
             message: error.message
         })

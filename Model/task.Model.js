@@ -19,8 +19,9 @@ const taskSchema = new mongoose.Schema({
         required: true
     },
     assignTo: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Users"
+        // type: mongoose.Schema.Types.ObjectId,
+        // ref: "Users"
+        type: Number
     },
     status: {
         type: String,
@@ -50,7 +51,8 @@ const taskSchema = new mongoose.Schema({
         type: String
     }
 }, {
-    versionKey: false
+    versionKey: false,
+    timestamps: true
 })
 
 export const taskModel = mongoose.model("GetTask", taskSchema, "Task");
