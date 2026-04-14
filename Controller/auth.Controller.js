@@ -1,9 +1,28 @@
 import { userModel } from "../Model/auth.Model.js";
 import jwt from 'jsonwebtoken';
+import { companyModel } from "../Model/compnay.Model.js";
+import bcrpt from "bcrypt";
 
-export const registerUser = async (req, res) => {
+export const RegisterUser = async (req, res) => {
     try {
-        const { name, email, password, role } = req.body;
+        const { compnayName, name, email, password } = req.body;
+
+        const existingUser = await userModel.findOne({ email });
+        if (existingUser) {
+            return res.status(400).json({
+                message: "Email already exists"
+            });
+        }
+
+        const lastCompany = await companyModel.findOne().sort({ compnayId: -1 });
+        const newCompanyId = lastCompany ? lastCompany.compnayId + 1 : 1;
+
+        const company = await companyModel.create({
+            compnayId: newCompanyId,
+            compnayName: compnayName
+        });
+
+        const hashPassword = await bcrpt.hash(password, 10);
 
         const lastUser = await userModel.findOne().sort({ userId: -1 });
         const newUserId = lastUser ? lastUser.userId + 1 : 1;
@@ -12,9 +31,10 @@ export const registerUser = async (req, res) => {
             userId: newUserId,
             name,
             email,
-            password,
-            role
-        })
+            password: hashPassword,
+            // role,
+            companyId: company.compnayId
+        });
 
         await newUser.save();
 
@@ -38,14 +58,22 @@ export const loginUser = async (req, res) => {
 
         if (!user) {
             return res.status(404).json({
-                message: "User not found"
+                message: "Invalid email or password"
             });
         }
 
-        if (user.password !== password) {
+        // if (user.password !== password) {
+        //     return res.status(401).json({
+        //         message: "Invalid password"
+        //     });
+        // }
+
+        const isMtach = await bcrpt.compare(password, user.password);
+
+        if (!isMtach) {
             return res.status(401).json({
-                message: "Invalid password"
-            });
+                message: "Invalid email or password"
+            })
         }
 
         if (!process.env.JWT_SECRET) {
@@ -53,11 +81,10 @@ export const loginUser = async (req, res) => {
                 message: "JWT secret not configured on server",
             });
         }
-
         const token = jwt.sign(
             {
                 userId: user.userId,
-                role: user.role
+                role: user.role,
             },
             process.env.JWT_SECRET,
             { expiresIn: '1d' }
@@ -65,8 +92,13 @@ export const loginUser = async (req, res) => {
 
         res.status(200).json({
             message: "Login successful",
-            token: token
+            token: token,
+            user: {
+                userId: user.userId,
+                role: user.role,
+            }
         })
+
     } catch (error) {
         console.log("Error in loginUser controller:", error);
         res.status(500).json({

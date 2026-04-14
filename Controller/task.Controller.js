@@ -1,5 +1,6 @@
 import { userModel } from "../Model/auth.Model.js";
 import { taskModel } from "../Model/task.Model.js";
+import bcrpt from "bcrypt";
 
 export const addTask = async (req, res) => {
     try {
@@ -19,14 +20,25 @@ export const addTask = async (req, res) => {
         const lastTask = await taskModel.findOne().sort({ taskId: -1 });
         const newTaskId = lastTask ? lastTask.taskId + 1 : 1;
 
-        const currentUser = await userModel.findOne({ userId: req.user.userId });
-        let assignedUserRef = currentUser ? currentUser.userId : null;
+        const loggedInUserId = Number(req.user.userId);
+        let assignedUserRef = loggedInUserId;
 
         if (assignTo) {
-            const assignedUser = await userModel.findOne({ userId: assignTo });
+            const normalizedAssignTo = typeof assignTo === "string" ? assignTo.trim() : assignTo;
+            let assignedUser;
+
+            if (typeof normalizedAssignTo === "number" || !isNaN(Number(normalizedAssignTo))) {
+                assignedUser = await userModel.findOne({ userId: Number(normalizedAssignTo) });
+            } else if (typeof normalizedAssignTo === "string") {
+                assignedUser = await userModel.findOne({ name: normalizedAssignTo });
+            }
 
             if (assignedUser) {
                 assignedUserRef = assignedUser.userId;
+            } else {
+                return res.status(400).json({
+                    message: "Invalid assignTo value. Use valid userId or exact user name."
+                });
             }
         }
 
@@ -38,7 +50,7 @@ export const addTask = async (req, res) => {
             assignTo: assignedUserRef,
             status,
             dueDate,
-            createdBy: req.user.userId,
+            createdBy: loggedInUserId,
             createdAt,
             updatedAt,
             completedAt,
@@ -176,31 +188,6 @@ export const deleteTask = async (req, res) => {
     }
 }
 
-export const getUser = async (req, res) => {
-    try {
-        const employees = await userModel.find(
-            { role: "employee" },
-            { userId: 1, name: 1 }
-        );
-
-        if (!employees) {
-            return res.status(404).json({
-                message: "No employees found"
-            });
-        }
-
-        res.status(200).json({
-            message: "Employees retrieved successfully",
-            data: employees
-        })
-    } catch (error) {
-        console.log("Error in getting user", error);
-        res.status(500).json({
-            message: error.message
-        })
-    }
-}
-
 export const getTasksTitle = async (req, res) => {
     try {
         const tasks = await taskModel.find({}, { taskId: 1, title: 1, _id: 0 });
@@ -215,6 +202,33 @@ export const getTasksTitle = async (req, res) => {
         })
     } catch (error) {
         console.log("Error in getting task titles", error);
+        res.status(500).json({
+            message: error.message
+        })
+    }
+}
+
+export const getTasksByUser = async (req, res) => {
+    try {
+        let tasks;
+
+        if (req.user.role === 'admin') {
+            tasks = await taskModel.find({
+                companyId: req.user.companyId
+            })
+        } else {
+            tasks = await taskModel.find({
+                companyId: req.user.companyId,
+                assignTo: req.user.userId
+            })
+        }
+        res.status(200).json({
+            message: "Tasks retrieved successfully",
+            data: tasks
+        })
+
+    } catch (error) {
+        console.log("Error in getting tasks by user", error);
         res.status(500).json({
             message: error.message
         })

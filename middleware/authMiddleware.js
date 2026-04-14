@@ -9,7 +9,7 @@ export const authMiddleware = (req, res, next) => {
         }
 
         // Support both "authorization" (standard) and "authentication" (if frontend uses it)
-        const authHeader = req.headers['authorization'] || req.headers['authentication'];
+        const authHeader = req.headers['authorization'];
 
         if (!authHeader) {
             return res.status(401).json({

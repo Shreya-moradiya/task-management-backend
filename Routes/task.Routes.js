@@ -10,7 +10,7 @@ taskRoutes.get('/task', TaskController.getTask);
 taskRoutes.get('/taskById/:taskId', TaskController.getTaskById);
 taskRoutes.post('/updateTask/:taskId', adminMiddleware, TaskController.updateTask);
 taskRoutes.delete('/deleteTask/:taskId', adminMiddleware, TaskController.deleteTask);
-taskRoutes.get('/getUser', TaskController.getUser);
 taskRoutes.get('/taskTitle', TaskController.getTasksTitle);
+taskRoutes.get('/taskByUser',TaskController.getTasksByUser);
 
 export default taskRoutes;
